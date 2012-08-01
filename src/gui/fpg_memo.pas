@@ -144,6 +144,7 @@ type
     property    ShowHint;
     property    TabOrder;
     property    TextColor;
+    property    Wrapping: boolean read FWrapping write FWrapping default False;
     property    OnChange: TNotifyEvent read FOnChange write FOnChange;
     property    OnDragEnter;
     property    OnDragLeave;
@@ -163,16 +164,16 @@ type
   end;
 
 
-function CreateMemo(AOwner: TComponent; x, y, w, h: TfpgCoord): TfpgMemo;
+function CreateMemo(AOwner: TComponent; x, y, w, h: TfpgCoord; AWrap: boolean=False): TfpgMemo;
 
 
 implementation
 
 uses
-  fpg_stringutils
-  ,fpg_constants
-  ,fpg_dialogs
-  ;
+  strutils,
+  fpg_stringutils,
+  fpg_constants,
+  fpg_dialogs;
 
 const
   // internal popupmenu item names
@@ -238,7 +239,7 @@ end;
 { TfpgMemo }
 
 
-function CreateMemo(AOwner: TComponent; x, y, w, h: TfpgCoord): TfpgMemo;
+function CreateMemo(AOwner: TComponent; x, y, w, h: TfpgCoord; AWrap: boolean=False): TfpgMemo;
 begin
   Result       := TfpgMemo.Create(AOwner);
   Result.Left  := x;
@@ -246,6 +247,7 @@ begin
   Result.Width := w;
   if h > 0 then
     Result.Height := h;
+  Result.Wrapping := AWrap;
 end;
 
 
@@ -939,6 +941,7 @@ var
   selsl, selsp, selel, selep: integer;
   c: integer;
   s: string;
+  lTxtFlags: TfpgTextFlags;
 begin
   Canvas.ClearClipRect;
   r.SetRect(0, 0, Width, Height);
@@ -985,6 +988,10 @@ begin
     selsp := FSelEndPos;
   end;
 
+  lTxtFlags:= [];
+  if FWrapping then
+    Include(lTxtFlags, txtWrap);
+
   yp := 3;
   for n := FFirstline to LineCount-1 do
   begin
@@ -998,7 +1005,7 @@ begin
         if ls[c] = #9 then
         begin
           if s <> '' then
-            Canvas.DrawString(-FDrawOffset + FSideMargin + xp, yp, s);
+            Canvas.DrawText(-FDrawOffset + FSideMargin + xp, yp, Width - FSideMargin, Height, s, lTxtFlags);
           xp := xp + Canvas.Font.TextWidth(' ') * FTabWidth;
           s := '';
         end
@@ -1006,10 +1013,10 @@ begin
           s := s + ls[c];
       end;
       if s <> '' then
-        Canvas.DrawString(-FDrawOffset + FSideMargin + xp, yp, s);
+        Canvas.DrawText(-FDrawOffset + FSideMargin + xp, yp, Width - FSideMargin, Height, s, lTxtFlags);
     end
     else
-      Canvas.DrawString(-FDrawOffset + FSideMargin, yp, ls);
+      Canvas.DrawText(-FDrawOffset + FSideMargin, yp, Width - FSideMargin, Height, ls, lTxtFlags);
 
     if Focused then
     begin
@@ -1068,6 +1075,8 @@ var
   prevval: string;
   s: string;
   ls: string;
+  buf: TfpgString;
+  i, j, k: integer;
 begin
   inherited HandleKeyChar(AText, shiftstate, consumed);
   if consumed then
@@ -1088,6 +1097,23 @@ begin
           FCursorLine := 0;
         DeleteSelection;
         ls := GetLineText(FCursorLine);
+        if FWrapping and (Font.TextWidth(ls + s) >= (Width - FSideMargin)) then
+        begin
+          i := 1;
+          buf := ExtractSubstr(ls, i, txtWordDelims);
+          while buf <> '' do
+          begin
+            k := j;
+            j := i;
+            buf := ExtractSubstr(ls, i, txtWordDelims);
+            if buf = '' then
+              SetLineText(FCursorLine, UTF8Copy(ls, 1, k - 2));
+          end;
+          ls := ExtractSubstr(ls, k, txtWordDelims);
+          lines.Add(ls);
+          FCursorPos := Length(ls);
+          inc(FCursorLine);
+        end;
         UTF8Insert(s, ls, FCursorPos + 1);
         SetLineText(FCursorLine, ls);
         Inc(FCursorPos);
@@ -1426,6 +1452,7 @@ var
   lnum: integer;
   ls: string;
 begin
+  inherited HandleMouseMove(x, y, btnstate, shiftstate);
   if not FMouseDragging or ((btnstate and 1) = 0) then
   begin
     FMouseDragging := False;
