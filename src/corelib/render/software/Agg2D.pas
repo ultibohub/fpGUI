@@ -37,6 +37,7 @@ interface
 
 {$IFDEF AGG2D_USE_FREETYPE}
   {$UNDEF AGG2D_USE_WINFONTS}
+  {$UNDEF AGG2D_USE_RASTERFONTS}
 {$ENDIF}
 
 uses
@@ -81,6 +82,11 @@ uses
 {$IFDEF AGG2D_USE_WINFONTS}
   agg_font_win32_tt ,
 {$ENDIF }
+{$IFDEF AGG2D_USE_RASTERFONTS}
+  agg_embedded_raster_fonts ,
+  agg_glyph_raster_bin ,
+  agg_renderer_raster_text ,
+{$ENDIF}
 
   Math,
   Classes,
@@ -96,6 +102,9 @@ uses
   {$ENDIF}
   {$IFDEF UNIX}
     {$I agg_platform_x11.inc}
+  {$ENDIF}
+  {$IFDEF ULTIBO}
+    {$I agg_platform_ultibo.inc}
   {$ENDIF}
 
   fpg_base,
@@ -333,8 +342,14 @@ type
   {$ENDIF }
 
   {$IFNDEF AGG2D_NO_FONT}
+  {$IFDEF AGG2D_USE_FREETYPE}
    m_fontEngine       : TAggFontEngine;
    m_fontCacheManager : font_cache_manager;
+  {$ENDIF}
+  {$IFDEF AGG2D_USE_RASTERFONTS}
+   m_fontGlyph        : glyph_raster_bin;
+   m_font_flip_y      : boolean;
+  {$ENDIF}
   {$ENDIF}
 
   // Other Pascal-specific members
@@ -362,6 +377,9 @@ type
     {$ENDIF}
     {$IFDEF UNIX}
       {$I agg_platform_x11.inc}
+    {$ENDIF}
+    {$IFDEF ULTIBO}
+      {$I agg_platform_ultibo.inc}
     {$ENDIF}
 
     // ------ TfpgCanvasBase implementation requirements ---------
@@ -659,6 +677,9 @@ uses
   {$ENDIF}
   {$IFDEF UNIX}
     {$I agg_platform_x11.inc}
+  {$ENDIF}
+  {$IFDEF ULTIBO}
+    {$I agg_platform_ultibo.inc}
   {$ENDIF}
   fpg_stringutils;
 
@@ -1183,6 +1204,9 @@ end;
 {$IFDEF UNIX}
   {$I agg_platform_x11.inc}
 {$ENDIF}
+{$IFDEF ULTIBO}
+  {$I agg_platform_ultibo.inc}
+{$ENDIF}
 
 
 { CREATE }
@@ -1301,7 +1325,13 @@ begin
 {$ENDIF }
 
 {$IFNDEF AGG2D_NO_FONT}
+{$IFDEF AGG2D_USE_FREETYPE }
  m_fontCacheManager.Construct(@m_fontEngine );
+{$ENDIF }
+{$IFDEF AGG2D_USE_RASTERFONTS}
+ m_fontGlyph.Construct(nil );
+ m_font_flip_y:=False;
+{$ENDIF}
 {$ENDIF}
 
  LineCap (m_lineCap );
@@ -1329,8 +1359,13 @@ begin
  m_convDash.Destruct;
 
  {$IFNDEF AGG2D_NO_FONT}
+ {$IFDEF AGG2D_USE_FREETYPE}
  m_fontEngine.Destruct;
  m_fontCacheManager.Destruct;
+ {$ENDIF}
+ {$IFDEF AGG2D_USE_RASTERFONTS}
+ //Ultibo To Do //Nothing ?
+ {$ENDIF}
  {$ENDIF}
 
  {$IFDEF AGG2D_USE_WINFONTS}
@@ -2641,7 +2676,12 @@ end;
 procedure TAgg2D.FlipText(const flip : boolean );
 begin
   {$IFNDEF AGG2D_NO_FONT}
+  {$IFDEF AGG2D_USE_FREETYPE}
   m_fontEngine.flip_y_(not flip );
+  {$ENDIF}
+  {$IFDEF AGG2D_USE_RASTERFONTS}
+  m_font_flip_y:=not(flip);
+  {$ENDIF}
   {$ENDIF}
 end;
 
@@ -2688,6 +2728,9 @@ begin
  else
   m_fontEngine.create_font_(PChar(@fileName[1 ] ) ,glyph_ren_agg_gray8 ,worldToScreen(height) ,0.0 ,b ,italic );
 {$ENDIF }
+{$IFDEF AGG2D_USE_RASTERFONTS}
+ //Ultibo To Do //Nothing ?
+{$ENDIF}
 end;
 
 { FONTHEIGHT }
@@ -2717,7 +2760,12 @@ procedure TAgg2D.TextHints(hints : boolean );
 begin
  m_textHints:=hints;
  {$IFNDEF AGG2D_NO_FONT}
+ {$IFDEF AGG2D_USE_FREETYPE}
  m_fontEngine.hinting_(m_textHints );
+ {$ENDIF}
+ {$IFDEF AGG2D_USE_RASTERFONTS}
+ //Ultibo To Do //Nothing ?
+ {$ENDIF}
  {$ENDIF}
 end;
 
@@ -2728,6 +2776,7 @@ begin
   Result := 0;
 end;
 {$ELSE}
+{$IFNDEF AGG2D_USE_RASTERFONTS}
 var
  x ,y  : double;
  first : boolean;
@@ -2767,6 +2816,11 @@ begin
  else
   result:=ScreenToWorld(x );
 end;
+{$ELSE}
+begin
+ Result:=m_fontGlyph.width(PChar(str));
+end;
+{$ENDIF}
 {$ENDIF}
 
 { TEXT }
@@ -2780,6 +2834,7 @@ begin
 
 end;
 {$ELSE}
+{$IFNDEF AGG2D_USE_RASTERFONTS}
 var
  dx ,dy ,asc ,start_x ,start_y : double;
 
@@ -2902,6 +2957,59 @@ begin
     end;
   end;
 end;
+{$ELSE}
+var
+ dx ,dy ,asc ,start_x ,start_y : double;
+
+ clr : aggclr;
+ 
+ rt : renderer_raster_htext_solid;
+begin
+ 
+ if str = '' then exit;
+
+ dx:=0.0;
+ dy:=0.0;
+
+ case m_textAlignX of
+  AGG_AlignCenter :
+   dx:=-textWidth(str ) * 0.5;
+  AGG_AlignRight :
+   dx:=-textWidth(str );
+ end;
+
+ asc:=fontHeight;
+ 
+ case m_textAlignY of
+  AGG_AlignCenter :
+   dy:=-asc * 0.5;
+  AGG_AlignTop :
+   dy:=-asc;
+ end;
+ 
+ if m_font_flip_y then dy:=-dy;
+ 
+ start_x:=x + dx;
+ start_y:=y + dy;
+
+ if roundOff then
+  begin
+   start_x:=Trunc(start_x );
+   start_y:=Trunc(start_y );
+  end;
+
+ start_x:=start_x + ddx;
+ start_y:=start_y + ddy;
+ 
+ rt.Construct(@m_renBase ,@m_fontGlyph );
+ 
+ clr.Construct(m_fillColor );
+ 
+ rt.color_(@clr);
+ 
+ rt.render_text(start_x ,start_y ,PChar(str) ,m_font_flip_y);
+end;
+{$ENDIF}
 {$ENDIF}
 
 { RESETPATH }
@@ -3576,6 +3684,21 @@ begin
   i := gFontCache.Find(fnt);
   if i > 0 then
     Font(gFontCache.Items[i].FileName, lSize, fnt.IsBold, fnt.IsItalic, AGG_VectorFontCache, Deg2Rad(fnt.Angle));
+end;
+{$ENDIF}
+{$IFDEF ULTIBO}
+begin
+ if fntres = nil then Exit; 
+ 
+ {$IFNDEF AGG2D_NO_FONT}
+ {$IFDEF AGG2D_USE_FREETYPE}
+ //Ultibo To do
+ {$ENDIF}
+ {$IFDEF AGG2D_USE_RASTERFONTS}
+ m_fontGlyph.font_(TfpgUltiboFontResource(fntres).FontData);
+ Font('',m_fontGlyph.height);
+ {$ENDIF}
+ {$ENDIF}
 end;
 {$ENDIF}
 

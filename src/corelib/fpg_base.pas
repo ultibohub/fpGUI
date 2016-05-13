@@ -20,7 +20,7 @@ unit fpg_base;
 {$mode objfpc}{$H+}
 
 // To enable the AggPas powered Canvas
-{.$define AGGCanvas}
+{.$define AGGCanvas} 
 
 // For debug use only
 {.$define GDEBUG}
@@ -131,7 +131,15 @@ var
   FPG_DEFAULT_FONT_DESC: string = 'Liberation Sans-10:antialias=true';
   FPG_DEFAULT_SANS: string = 'Liberation Sans';
   {$ENDIF}
+  {$IFDEF ULTIBO}
+  FPG_DEFAULT_FONT_DESC: string = 'verdana12'; //Ultibo To Do //Need to account for FreeType
+  FPG_DEFAULT_SANS: string = 'Verdana'; //Ultibo To Do //Need to account for FreeType
+  {$ENDIF}
+  {$IFDEF ULTIBO}
+  FPG_DEFAULT_FIXED_FONT_DESC: string = 'gse8x16'; //Ultibo To Do //Need to account for FreeType
+  {$ELSE}
   FPG_DEFAULT_FIXED_FONT_DESC: string = 'Courier New-10';
+  {$ENDIF}
 
 const
   UserNamedColorStart   = 128;

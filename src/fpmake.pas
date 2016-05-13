@@ -77,6 +77,8 @@ begin
 
     if Defaults.OS in AllUnixOSes then
       Defaults.Options.Add('-dX11')
+    else if Defaults.OS in [ultibo] then
+      Defaults.Options.Add('-dULTIBO')
     else
       Defaults.Options.Add('-dGDI');
 
@@ -86,6 +88,7 @@ begin
     P.SourcePath.Add('corelib');
     P.SourcePath.Add('corelib/x11', AllUnixOSes);
     P.SourcePath.Add('corelib/gdi', AllWindowsOSes);
+    P.SourcePath.Add('corelib/ultibo', [ultibo]);
     P.SourcePath.Add('gui');
     P.SourcePath.Add('gui/db');
     P.SourcePath.Add('reportengine');
@@ -93,6 +96,7 @@ begin
     P.UnitPath.Add('corelib');
     P.UnitPath.Add('corelib/x11', AllUnixOSes);
     P.UnitPath.Add('corelib/gdi', AllWindowsOSes);
+    P.UnitPath.Add('corelib/ultibo', [ultibo]);
     P.UnitPath.Add('gui');
     P.UnitPath.Add('gui/db');
     P.UnitPath.Add('reportengine');
@@ -102,6 +106,7 @@ begin
     P.IncludePath.Add('corelib');
     P.IncludePath.Add('corelib/x11', AllUnixOSes);
     P.IncludePath.Add('corelib/gdi', AllWindowsOSes);
+    P.IncludePath.Add('corelib/ultibo', [ultibo]);
     P.IncludePath.Add('gui');
 
     { todo: add unit and include dependency for all }
@@ -139,6 +144,7 @@ begin
     T := P.Targets.AddUnit('fpg_utils.pas');
       T.Dependencies.AddInclude('fpg_utils_impl.inc', AllUnixOSes);
       T.Dependencies.AddInclude('fpg_utils_impl.inc', AllWindowsOSes);
+      T.Dependencies.AddInclude('fpg_utils_impl.inc', [ultibo]);
     T := P.Targets.AddUnit('fpg_imgutils.pas');
     T := P.Targets.AddUnit('fpg_command_intf.pas');
     T := P.Targets.AddUnit('fpg_main.pas');
@@ -179,8 +185,16 @@ begin
       T := P.Targets.AddUnit('fpg_interface.pas', AllWindowsOSes);
     end;
 
+    { corelib/ultibo }
+    if Defaults.OS in [ultibo] then
+    begin
+      T := P.Targets.AddUnit('fpg_impl.pas', [ultibo]);
+      T := P.Targets.AddUnit('fpg_ultibo.pas', [ultibo]);
+      T := P.Targets.AddUnit('fpg_interface.pas', [ultibo]);
+    end;
+    
     { gui/db }
-    T := P.Targets.AddUnit('fpgui_db.pas');
+    T := P.Targets.AddUnit('fpgui_db.pas', AllUnixOSes + AllWindowsOSes);
 
     { gui }
     T := P.Targets.AddUnit('fpg_animation.pas');
