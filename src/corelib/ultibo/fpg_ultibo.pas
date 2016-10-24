@@ -652,6 +652,8 @@ type
     function    DoGetFontFaceList: TStringList; override;
     procedure   DoWaitWindowMessage(atimeoutms: integer); override;
     function    MessagesPending: boolean; override;
+    
+    procedure   DoPutFramebufferRect(x, y, w, h: TfpgCoord; src: Pointer; stride: LongWord);
   public
     constructor Create(const AParams: string); override;
     destructor  Destroy; override;
@@ -1790,77 +1792,21 @@ end;
 
 procedure TfpgUltiboCanvas.DoPutBufferToScreen(x, y, w, h: TfpgCoord);
 var
- Data:TDMAData;
- Size:LongWord;
+ Stride:LongWord;
  Source:Pointer;
- Address:LongWord;
- CurrentX:LongWord;
- CurrentY:LongWord;
 begin
  {$IFDEF DEBUG}
  LoggingOutput('TfpgUltiboCanvas.DoPutBufferToScreen (x=' + IntToStr(x) + ' y=' + IntToStr(y) + ' w=' + IntToStr(w) + ' h=' + IntToStr(h) + ')'); //Ultibo To Do //Implement simpleipc for SendDebug
  {$ENDIF DEBUG} 
  
- if (DefaultApplication <> nil) and (DefaultApplication.Framebuffer <> nil) then
-  begin
-   {Lock Framebuffer}
-   if MutexLock(DefaultApplication.Framebuffer.Lock) <> ERROR_SUCCESS then Exit;
-   
-   if DMAAvailable and SysInitCompleted then
-    begin
-     {Create Data}
-     FillChar(Data,SizeOf(TDMAData),0);
-     Data.Source:=m_rbuf.row_xy(x,y,w);
-     Data.Dest:=Pointer(DefaultApplication.Framebuffer.Address + ((FWindow.Top + y) * DefaultApplication.Framebuffer.Pitch) + ((FWindow.Left + x) * (DefaultApplication.Framebuffer.Depth shr 3)));
-     Data.Flags:=DMA_DATA_FLAG_STRIDE or DMA_DATA_FLAG_SOURCE_WIDE or DMA_DATA_FLAG_DEST_WIDE or DMA_DATA_FLAG_NOCLEAN or DMA_DATA_FLAG_NOINVALIDATE or DMA_DATA_FLAG_BULK;
-     Data.StrideLength:=w * (DefaultApplication.Framebuffer.Depth shr 3);
-     Data.SourceStride:=0; 
-     Data.DestStride:=DefaultApplication.Framebuffer.Pitch - Data.StrideLength; 
-     Data.Size:=Data.StrideLength * h;
-     
-     {Check Cached}
-     if not(DMA_CACHE_COHERENT) then
-      begin
-       {Clean Cache}
-       CleanDataCacheRange(LongWord(Data.Source),Data.StrideLength * h);
-      end;
-     
-     {Perform Copy}
-     DMATransfer(@Data,DMA_DIR_MEM_TO_MEM,DMA_DREQ_ID_NONE);
-    end
-   else
-    begin   
-     {Memory Barrier}
-     DataMemoryBarrier;  {Before the First Write}
-     
-     {Draw Buffer}
-     CurrentX:=x;
-     CurrentY:=y;
-     while CurrentY < (y + h) do
-      begin
-       {Get Source}
-       Source:=m_rbuf.row_xy(CurrentX,CurrentY,w);
-       
-       {Get Address}
-       Address:=(DefaultApplication.Framebuffer.Address + ((FWindow.Top + CurrentY) * DefaultApplication.Framebuffer.Pitch) + ((FWindow.Left + CurrentX) * (DefaultApplication.Framebuffer.Depth shr 3)));
-       
-       {Write Buffer}
-       System.Move(Source^,Pointer(Address)^,w * SizeOf(LongWord));
-       
-       {Check Cached}
-       if (DefaultApplication.Framebuffer.Device.DeviceFlags and FRAMEBUFFER_FLAG_CACHED) <> 0 then
-        begin
-         {Clean Cache}
-         CleanDataCacheRange(Address,w * SizeOf(LongWord));
-        end;
-        
-       Inc(CurrentY);
-      end;
-    end;
-    
-   {Unlock Framebuffer}
-   MutexUnlock(DefaultApplication.Framebuffer.Lock);
-  end;  
+ if DefaultApplication = nil then Exit;
+ 
+ if (w = 0) or (h = 0) then Exit;
+ 
+ Stride:=m_rbuf._width - w;
+ Source:=m_rbuf.row_xy(x,y,w);
+ 
+ DefaultApplication.DoPutFramebufferRect(x, y, w, h, Source, Stride);
 end;
 
 constructor TfpgUltiboCanvas.Create(awin: TfpgWindowBase);
@@ -4453,6 +4399,8 @@ begin
  LoggingOutput('TfpgUltiboWindow.DoReleaseWindowHandle'); //Ultibo To Do //Implement simpleipc for SendDebug
  {$ENDIF DEBUG} 
  
+ //Ultibo To do
+ 
  if FWinHandle <= 0 then Exit;
  FWinHandle:=0;
 end;
@@ -4750,6 +4698,29 @@ begin
  //Ultibo To do
 end;
  
+procedure TfpgUltiboApplication.DoPutFramebufferRect(x, y, w, h: TfpgCoord; src: Pointer; stride: LongWord);
+begin
+ {$IFDEF DEBUG}
+ LoggingOutput('TfpgUltiboApplication.DoPutFramebufferRect (x=' + IntToStr(x) + ' y=' + IntToStr(y) + ' w=' + IntToStr(w) + ' h=' + IntToStr(h) + ' stride=' + IntToStr(stride) + ')'); //Ultibo To Do //Implement simpleipc for SendDebug
+ {$ENDIF DEBUG} 
+
+ if FParent <> nil then
+  begin
+   FParent.DoPutFramebufferRect(x, y, w, h, src, stride);
+  end
+ else
+  begin 
+   if FFramebuffer = nil then
+    begin
+     FFramebuffer:=FramebufferDeviceGetDefault;
+    end;
+   
+   if FFramebuffer = nil then Exit;
+   
+   FramebufferDevicePutRect(FFramebuffer, x, y, src, w, h, stride, FRAMEBUFFER_TRANSFER_DMA);
+  end;  
+end;
+ 
 procedure TfpgUltiboApplication.DoFlush;
 begin
  {$IFDEF DEBUG}
@@ -4778,7 +4749,7 @@ begin
      FFramebuffer:=FramebufferDeviceGetDefault;
     end;
    
-   if FramebufferDeviceGetProperties(Framebuffer,@Properties) = ERROR_SUCCESS then
+   if FramebufferDeviceGetProperties(FFramebuffer,@Properties) = ERROR_SUCCESS then
     begin
      Result:=Properties.PhysicalWidth;
     end;
@@ -4804,7 +4775,7 @@ begin
      FFramebuffer:=FramebufferDeviceGetDefault;
     end;
    
-   if FramebufferDeviceGetProperties(Framebuffer,@Properties) = ERROR_SUCCESS then
+   if FramebufferDeviceGetProperties(FFramebuffer,@Properties) = ERROR_SUCCESS then
     begin
      Result:=Properties.PhysicalHeight;
     end;
