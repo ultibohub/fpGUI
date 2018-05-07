@@ -11,19 +11,19 @@ are missing, what work is required to complete the port and how you can help.
 The initial work to make both fpGUI and AggPas run under Ultibo has now been committed, this
 includes the following changes:
 
-\src\extrafpc.cfg - Extended to include Ultibo definitions
-\src\fpmake.pas - Extended to include Ultibo definitions (Not tested)
-\src\corelib\fpg_base.pas - Minor adjustments (default fonts etc)
-\src\corelib\fpg_main.pas - Minor adjustments
-\src\corelib\ultibo\* - Added to provide the basic platform support for fpGUI
-\src\corelib\render\software\Agg2D.pas - Addition of raster font support
-\src\corelib\render\software\agg_mode.inc - Extended to include Ultibo definitions
-\src\corelib\render\software\agg_platform_ultibo.inc - Addition of Ultibo support for drawing to screen 
-\src\corelib\render\software\platform\* - Added to provide the basic platform support for AggPas
+* \src\extrafpc.cfg - Extended to include Ultibo definitions
+* \src\fpmake.pas - Extended to include Ultibo definitions (Not tested)
+* \src\corelib\fpg_base.pas - Minor adjustments (default fonts etc)
+* \src\corelib\fpg_main.pas - Minor adjustments
+* \src\corelib\ultibo\* - Added to provide the basic platform support for fpGUI
+* \src\corelib\render\software\Agg2D.pas - Addition of raster font support
+* \src\corelib\render\software\agg_mode.inc - Extended to include Ultibo definitions
+* \src\corelib\render\software\agg_platform_ultibo.inc - Addition of Ultibo support for drawing to screen 
+* \src\corelib\render\software\platform\* - Added to provide the basic platform support for AggPas
 
-\examples\corelib\aggcanvas - Ultibo specific version of the example
-\examples\corelib\canvastest - As above
-\examples\corelib\helloworld - As above
+* \examples\corelib\aggcanvas - Ultibo specific version of the example
+* \examples\corelib\canvastest - As above
+* \examples\corelib\helloworld - As above
 
 ### What is working
 
@@ -61,11 +61,11 @@ You can also pass a parameter to the batch file to specify which type of Raspber
 for, the default is RPI2B (which also works for 3B) but you can specify any of the following 
 instead (eg build_ultibo.bat RPIB):
 
-RPIA
-RPIB
-RPIZERO
-RPI2B
-RPI3B
+* RPIA
+* RPIB
+* RPIZERO
+* RPI2B
+* RPI3B
 
 If the build is successful then all of the compiled units end up in the \lib\arm-ultibo folder.
 
@@ -86,9 +86,9 @@ doesn't work yet because some more platform support is needed for the AggPas dem
 Building the above examples has revealed a few items that don't seem to work so far, there are probably
 others but these are the ones that didn't work in the examples:
 
-fpgCanvas.GradientFill() - Nothing seems to appear in the final output
-fpgCanvas.TextWidth() - Returns an extremely large number which is not correct
-fpgCanvas.Font.TextWidth() - Same as fpgCanvas.TextWidth (probably the same function internally)
+* fpgCanvas.GradientFill() - Nothing seems to appear in the final output
+* fpgCanvas.TextWidth() - Returns an extremely large number which is not correct
+* fpgCanvas.Font.TextWidth() - Same as fpgCanvas.TextWidth (probably the same function internally)
 
 ### What next and how to help
 
@@ -104,8 +104,8 @@ FreeType 1 is available in pascal source form and while older and with less feat
 true type font support if it can be connected into the AggPas font engine.
 
 ***Update:*** As of Ultibo core 1.3.077 the FreeType 2 library is included and available for use, this means that
-the fpGUI port can also make use of FreeType 2 instead of trying to rerofit the much older FreeType 1 code
-into fpGUI. Some work has been started on connecting the FreeType 2 support to info the Ultibo port of fpGUI
+the fpGUI port can also make use of FreeType 2 instead of trying to retrofit the much older FreeType 1 code
+into fpGUI. Some work has been started on connecting the FreeType 2 support into the Ultibo port of fpGUI
 but this has not yet been completed.
 
 #### Basic Window management
@@ -125,6 +125,13 @@ Ultibo already has the basics of both mouse and keyboard input, some enhancement
 all fit together but in general fpGUI expects to receive events via a message queue to say when a key was
 pressed or the mouse was clicked. A thread that takes the mouse and keyboard data from Ultibo and translates
 them into fpGUI events is likely to be a good starting point.
+
+***Update:*** As of Ultibo core 2.0.235 support for mouse cursor and text caret is now included in Ultibo, 
+while the implementations provided may not be directly usable in fpGUI they will show how such support can
+be added to a basic window manager in order to implement the necessary functionality for fpGUI. 
+
+The FreeVision port also provides a good reference point for translating the mouse and keyboard devices in
+Ultibo core to events that can be delivered to a interface framework.
 
 #### How to help? 
 
@@ -146,9 +153,9 @@ way that suits you.
 
 ### Documentation and other info
 
-The official fpGUI website is at: http://fpgui.sourceforge.net/
-fpGUI documentation can be found at: http://fpgui.sourceforge.net/apidocs/index.html
+* The official fpGUI website is at: http://fpgui.sourceforge.net/
+* fpGUI documentation can be found at: http://fpgui.sourceforge.net/apidocs/index.html
 
-The official AggPas website is at: http://www.crossgl.com/aggpas/
-Information about the demos is at: http://www.crossgl.com/aggpas/aggpas-demo.htm
-AggPas documentation can be found at: http://www.crossgl.com/aggpas/documentation/
+* The official AggPas website is at: http://www.crossgl.com/aggpas/
+* Information about the demos is at: http://www.crossgl.com/aggpas/aggpas-demo.htm
+* AggPas documentation can be found at: http://www.crossgl.com/aggpas/documentation/
