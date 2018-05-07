@@ -264,7 +264,14 @@ begin
                  inc(dest^, length(LineEnding)-1);
                end;
 {$ELSE}
+  {$IFDEF ULTIBO}
+               begin
+                 move(lineending[1], dest^, length(LineEnding));
+                 inc(dest^, length(LineEnding)-1);
+               end;
+  {$ELSE}
                Dest^ := LineEnding;
+  {$ENDIF}             
 {$ENDIF}
         end;
         inc(Source);
